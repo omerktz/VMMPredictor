@@ -17,7 +17,7 @@ public class SequenceEncoder {
 		if (!dict.containsKey(s)) {
 			synchronized (dict) {
 				if (!dict.containsKey(s)) {
-					Integer i = dict.size();
+					Integer i = dict.size()+1;
 					this.dict.put(s, i);
 					this.revdict.put(i, s);
 				}
@@ -34,16 +34,17 @@ public class SequenceEncoder {
 	}
 	
 	public IntSequence encode(Object[] seq) {
-		Integer[] res = new Integer[seq.length];
+		Integer[] res = new Integer[seq.length+1];
+		res[0] = 0;
 		for (int i = 0; i < seq.length; i++) {
-			res[i] = getEncodedSymbol(seq[i]);
+			res[i+1] = getEncodedSymbol(seq[i]);
 		}
 		return new IntSequence(res);
 	}
 	
 	public Object[] decode(IntSequence iseq) {
-		Object[] res = new String[iseq.length()];
-		for (int i = 0; i < iseq.length(); i++) {
+		Object[] res = new String[iseq.length()-1];
+		for (int i = 1; i < iseq.length(); i++) {
 			res[i] = getDecodedSymbol(iseq.intAt(i));
 		}
 		return res;

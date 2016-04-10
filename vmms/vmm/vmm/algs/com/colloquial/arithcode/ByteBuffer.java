@@ -125,31 +125,11 @@ public final class ByteBuffer {
 	    _symbols[i] = _symbols[_offset+i+1];
 	}
 	_offset = 0;
+	--_length; // Omer: added
     }
 
     /** Number of contexts that fit in the buffer without shifting.
      */
     private static final int BUFFER_SIZE_MULTIPLIER = 32;
-
-
-    public static void main(String args[]) {
-
-      ByteBuffer buf = new ByteBuffer(4);
-
-      buf.buffer(1);
-      buf.buffer(2);
-      buf.buffer(3);
-      buf.buffer(4);
-      buf.buffer(5);
-      buf.buffer(6);
-
-
-      int []syms = buf.bytes();
-      System.out.println("offset="+buf.offset()+" length="+buf.length());
-      for(int i=buf.offset(), start=i; i<start+buf.length(); ++i) {
-        System.out.print("|"+syms[i]+"|");
-      }
-
-    }
 
 }

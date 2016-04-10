@@ -13,6 +13,7 @@ GNU General Public License (<a href="http://www.gnu.org/copyleft/gpl.html">GPL</
 
 package vmm.algs;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import vmm.IntSequence;
 import vmm.pred.VMMPredictor;
 import vmm.pred.VMMNotTrainedException;
@@ -41,76 +42,85 @@ import vmm.algs.oppm.*;
  */
 
 public final class PPMCPredictor
-    implements VMMPredictor {
+implements VMMPredictor {
 
-  private static final double NEGTIVE_INVERSE_LOG_2 = - (1 / Math.log(2.0));
+	private static final double NEGTIVE_INVERSE_LOG_2 = - (1 / Math.log(2.0));
 
-  private OfflinePPMModel ppmc;
+	private OfflinePPMModel ppmc;
 
-  public PPMCPredictor() {
-    ppmc = null;
-  }
+	private int count;
+	
+	public PPMCPredictor() {
+		ppmc = null;
+		count = 0;
+	}
 
-  /**
-   * initializes this PPMPredictor
-   * @param abSize alphabet size
-   * @param vmmOrder VMM order
-   */
-  public void init(int abSize, int vmmOrder) {
-    ppmc = new OfflinePPMModel(vmmOrder, abSize);
-  }
+	/**
+	 * initializes this PPMPredictor
+	 * @param abSize alphabet size
+	 * @param vmmOrder VMM order
+	 */
+	public void init(int abSize, int vmmOrder) {
+		ppmc = new OfflinePPMModel(vmmOrder, abSize);
+	}
 
-  public void learn(IntSequence trainingSequence) {
-    for (int symIndex = 0; symIndex < trainingSequence.length(); ++symIndex) {
-      ppmc.use(trainingSequence.intAt(symIndex));
-    }
-  }
+	public void learn(IntSequence trainingSequence) {
+		ppmc.clearContext(); // Omer: added
+		for (int symIndex = 0; symIndex < trainingSequence.length(); ++symIndex) {
+			ppmc.use(trainingSequence.intAt(symIndex));
+		}
+	}
 
-  public double predict(int symbol, IntSequence context) {
-    try {
-      ppmc.clearContext();
-      for (int i = 0; i < context.length(); ++i) {
-        ppmc.predict(context.intAt(i)); //updates the ppmc context
-      }
-      return ppmc.predict(symbol);
-    }
-    catch (NullPointerException npe) {
-      if (ppmc == null) {
-        throw new VMMNotTrainedException();
-      }
-      else {
-        throw npe;
-      }
-    }
-  }
+	public double predict(int symbol, IntSequence context) {
+		try {
+			ppmc.clearContext();
+			for (int i = 0; i < context.length(); ++i) {
+				ppmc.predict(context.intAt(i)); //updates the ppmc context
+			}
+			return ppmc.predict(symbol);
+		}
+		catch (NullPointerException npe) {
+			if (ppmc == null) {
+				throw new VMMNotTrainedException();
+			}
+			else {
+				throw npe;
+			}
+		}
+	}
 
-  public double logEval(IntSequence testSequence) {
-    try {
-      ppmc.clearContext();
+	public double logEval(IntSequence testSequence) {
+		try {
+			ppmc.clearContext();
 
-      double value = 0.0;
+			double value = 0.0;
 
-      for (int i = 0; i < testSequence.length(); ++i) {
-        value += Math.log(ppmc.predict(testSequence.intAt(i)));
-      }
-      return value * NEGTIVE_INVERSE_LOG_2; // the Math.log is in natural base
-    }
-    catch (NullPointerException npe) {
-      if (ppmc == null) {
-        throw new VMMNotTrainedException();
-      }
-      else {
-        throw npe;
-      }
-    }
+			for (int i = 0; i < testSequence.length(); ++i) {
+				value += Math.log(ppmc.predict(testSequence.intAt(i)));
+			}
+			return value * NEGTIVE_INVERSE_LOG_2; // the Math.log is in natural base
+		}
+		catch (NullPointerException npe) {
+			if (ppmc == null) {
+				throw new VMMNotTrainedException();
+			}
+			else {
+				throw npe;
+			}
+		}
 
-  }
+	}
 
-  public double logEval(IntSequence testSequence, IntSequence initialContext) {
-    for (int symIndex = 0; symIndex < initialContext.length(); ++symIndex) {
-      ppmc.use(initialContext.intAt(symIndex));
-    }
-    return logEval(testSequence);
-  }
+	public double logEval(IntSequence testSequence, IntSequence initialContext) {
+		//for (int symIndex = 0; symIndex < initialContext.length(); ++symIndex) {
+		//	ppmc.use(initialContext.intAt(symIndex));
+		//}
+		//return logEval(testSequence);
+		throw new NotImplementedException();
+	}
+	
+	public void print2dot(String filename) {
+		ppmc.print2dot(filename);
+	}
 
 }

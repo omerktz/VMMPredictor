@@ -3,20 +3,15 @@ package vmm;
 
 import java.util.Collection;
 
-import vmm.algs.BinaryCTWPredictor;
-import vmm.algs.DCTWPredictor;
 import vmm.algs.PPMCPredictor;
 import vmm.pred.VMMPredictor;
 
 public class API {
 
 	public static enum VMMType {
-		BinaryCTW,
-		DCTW,
-		//LZ78,
-		//LZms,
+		//BinaryCTW,
+		//DCTW,
 		PPMC,
-		//PST,
 	}
 	
 	private static final SequenceEncoder enc = new SequenceEncoder();
@@ -31,9 +26,9 @@ public class API {
 	public static VMMPredictor getNewPredictor(VMMType type, int alphabetSize, int maxSequenceLength) {
 		VMMPredictor p = null;
 		switch(type) {
-		case PPMC: p = new PPMCPredictor(); ((PPMCPredictor)p).init(alphabetSize, maxSequenceLength-1); break;
-		case DCTW: p = new DCTWPredictor(); ((DCTWPredictor)p).init(alphabetSize, maxSequenceLength-1); break;
-		case BinaryCTW: p = new BinaryCTWPredictor(); ((BinaryCTWPredictor)p).init(alphabetSize, maxSequenceLength); break;
+		case PPMC: p = new PPMCPredictor(); ((PPMCPredictor)p).init(alphabetSize+1, maxSequenceLength); break;
+		//case DCTW: p = new DCTWPredictor(); ((DCTWPredictor)p).init(alphabetSize+1, maxSequenceLength); break;
+		//case BinaryCTW: p = new BinaryCTWPredictor(); ((BinaryCTWPredictor)p).init(alphabetSize, maxSequenceLength); break;
 		}
 		return p;
 	}
@@ -76,20 +71,9 @@ public class API {
 	 * @return probability
 	 */
 	public static double predict(VMMPredictor p, Object symbol) {
-		return p.predict(enc.getEncodedSymbol(symbol), new IntSequence());
+		return predict(p, symbol, new Object[0]);
 	}
 	
-	/**
-	 * Compute probability of a sequence appearing after a context
-	 * @param p
-	 * @param symbol
-	 * @param context
-	 * @return -log_2(probability)
-	 */
-	public static double logEval(VMMPredictor p, Object[] seq, Object[] context) {
-		return p.logEval(enc.encode(seq), enc.encode(context));
-	}
-
 	/**
 	 * Compute probability of a sequence appearing after an empty context
 	 * @param p
@@ -99,4 +83,5 @@ public class API {
 	public static double logEval(VMMPredictor p, Object[] seq) {
 		return p.logEval(enc.encode(seq));
 	}
+	
 }

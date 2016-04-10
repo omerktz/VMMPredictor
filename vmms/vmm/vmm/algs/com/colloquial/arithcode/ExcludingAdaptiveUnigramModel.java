@@ -22,14 +22,14 @@ public final class ExcludingAdaptiveUnigramModel {
   /*@ron */
   private static final int DEFAULT_ABSIZE = 257;/*ascii + EOF*/
   private int abSize;
-  private int eofIndex;
+  //private int eofIndex;  // Omer: removed
 
     /** Construct an excluding adaptive unigram model.
      */
     public ExcludingAdaptiveUnigramModel(int alphabetSize) {
       /*@ron add on */
-      abSize = alphabetSize+1;
-      eofIndex = alphabetSize;
+      abSize = alphabetSize;//+1; // Omer: removed
+      //eofIndex = alphabetSize; // Omer: removed
       _count = new int[abSize];/*@ron from 257 to abSize*/
 
       java.util.Arrays.fill(_count,1); // counts are non-cumulative
@@ -44,27 +44,27 @@ public final class ExcludingAdaptiveUnigramModel {
      * @param exclusions Bytes to exclude as possible outcomes for interval.
      */
     public void interval(int symbol, int[] result, ByteSet exclusions) {
-	if (symbol == ArithCodeModel.EOF) symbol = eofIndex/*@ron EOF_INDEX*/;
+	//if (symbol == ArithCodeModel.EOF) symbol = eofIndex/*@ron EOF_INDEX*/; // Omer: removed
 	int sum = 0;
 	for (int i = 0; i < symbol; ++i) if (!exclusions.contains(i)) sum += _count[i];
 	result[0] = sum;
 	sum += _count[symbol];
 	result[1] = sum;
-	for (int i = symbol+1; i < _count.length-1; ++i) if (!exclusions.contains(i)) sum += _count[i];
-	if (symbol != eofIndex/*@ron EOF_INDEX*/) sum += _count[eofIndex/*@ron EOF_INDEX*/];
+	for (int i = symbol+1; i < _count.length; ++i) if (!exclusions.contains(i)) sum += _count[i];
+	//if (symbol != eofIndex/*@ron EOF_INDEX*/) sum += _count[eofIndex/*@ron EOF_INDEX*/]; // Omer: removed
 	result[2] = sum;
 	increment(symbol);
     }
 
     public void intervalNoIncrement(int symbol, int[] result, ByteSet exclusions) {
-      if (symbol == ArithCodeModel.EOF) symbol = eofIndex/*@ron EOF_INDEX*/;
+      //if (symbol == ArithCodeModel.EOF) symbol = eofIndex/*@ron EOF_INDEX*/; // Omer: removed
         int sum = 0;
         for (int i = 0; i < symbol; ++i) if (!exclusions.contains(i)) sum += _count[i];
         result[0] = sum;
         sum += _count[symbol];
         result[1] = sum;
-        for (int i = symbol+1; i < _count.length-1; ++i) if (!exclusions.contains(i)) sum += _count[i];
-        if (symbol != eofIndex/*@ron EOF_INDEX*/) sum += _count[eofIndex/*@ron EOF_INDEX*/];
+        for (int i = symbol+1; i < _count.length; ++i) if (!exclusions.contains(i)) sum += _count[i];
+        //if (symbol != eofIndex/*@ron EOF_INDEX*/) sum += _count[eofIndex/*@ron EOF_INDEX*/]; // Omer: removed
         result[2] = sum;
     }
 
@@ -77,9 +77,9 @@ public final class ExcludingAdaptiveUnigramModel {
     public int pointToSymbol(int midCount, ByteSet exclusions) {
 	int sum = 0;
 	for (int mid = 0; ; ++mid) {
-	    if (mid != eofIndex/*@ron EOF_INDEX*/ && exclusions.contains(mid)) continue;
+	    if (/*mid != eofIndex*//*@ron EOF_INDEX*/ /*&&*/ exclusions.contains(mid)) continue; // Omer: partly removed
 	    sum += _count[mid];
-	    if (sum > midCount) return (mid == eofIndex/*@ron EOF_INDEX*/) ? ArithCodeModel.EOF : mid;
+	    if (sum > midCount) return /*(mid == eofIndex*//*@ron EOF_INDEX*//*) ? ArithCodeModel.EOF : */mid; // Omer: partly removed
 	}
     }
 
@@ -90,7 +90,7 @@ public final class ExcludingAdaptiveUnigramModel {
     public int totalCount(ByteSet exclusions) {
 	int total = 0;
 	for (int i = 0; i < _count.length; ++i)
-	    if (i == eofIndex/*@ron EOF_INDEX*/ || !exclusions.contains(i)) total += _count[i];
+	    if (/*i == eofIndex*//*@ron EOF_INDEX*/ /*||*/ !exclusions.contains(i)) total += _count[i]; // Omer: partly removed
 	return total;
     }
 
@@ -104,7 +104,7 @@ public final class ExcludingAdaptiveUnigramModel {
     /** Counts for each outcome. Indices 0 to 255 for the
      * usual counts, 256 for end-of-file, and 257 for total.
      */
-    private int[] _count;
+    public int[] _count; // Omer: changed to public (for print2dot)
 
     /** Rescale the counts by dividing all frequencies by 2, but
      * taking a minimum of 1.

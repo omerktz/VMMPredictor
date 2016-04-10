@@ -23,166 +23,177 @@ package vmm.algs.com.colloquial.arithcode;
  */
 public class PPMModel implements ArithCodeModel {
 
-  /*@ron*/
-  private static final int BYTE_ABSIZE = 256;
-  private final int abSize;
+	/*@ron*/
+	private static final int BYTE_ABSIZE = 256;
+	private final int abSize;
 
-    /** Construct a new model with the specified maximum length of
-     * context to use for prediction.
-     * @param maxContextLength Maximum length of context to use for prediction.
-     */
-    public PPMModel(int maxContextLength) {
-	_maxContextLength = maxContextLength;
-	_buffer = new ByteBuffer(maxContextLength+1);
+	/** Construct a new model with the specified maximum length of
+	 * context to use for prediction.
+	 * @param maxContextLength Maximum length of context to use for prediction.
+	 */
+	public PPMModel(int maxContextLength) {
+		_maxContextLength = maxContextLength;
+		_buffer = new ByteBuffer(maxContextLength+1);
 
-        /*@ron */
-        abSize = BYTE_ABSIZE;
-        _backoffModel =  new ExcludingAdaptiveUnigramModel(abSize);
-        _contexts = new PPMNode[abSize];
-        _excludedBytes = new ByteSet(abSize);
+		/*@ron */
+		abSize = BYTE_ABSIZE;
+		_backoffModel =  new ExcludingAdaptiveUnigramModel(abSize);
+		_contexts = new PPMNode[abSize];
+		_excludedBytes = new ByteSet(abSize);
 
-    }
+	}
 
-    /**@ron added absize  */
-    public PPMModel(int maxContextLength, int alphabetSize) {
-        _maxContextLength = maxContextLength;
-        _buffer = new ByteBuffer(maxContextLength+1);
+	/**@ron added absize  */
+	public PPMModel(int maxContextLength, int alphabetSize) {
+		_maxContextLength = maxContextLength;
+		_buffer = new ByteBuffer(maxContextLength+1);
 
-        abSize = alphabetSize;
-        _backoffModel =  new ExcludingAdaptiveUnigramModel(abSize);
-        _contexts = new PPMNode[abSize];
-        _excludedBytes = new ByteSet(abSize);
+		abSize = alphabetSize;
+		_backoffModel =  new ExcludingAdaptiveUnigramModel(abSize);
+		_contexts = new PPMNode[abSize];
+		_excludedBytes = new ByteSet(abSize);
 
-    }
+	}
 
 
-    // specified in ArithCodeModel
-    public boolean escaped(int symbol) {
-	return (_contextNode != null
-		&& (symbol == ArithCodeModel.EOF
-		    || !_contextNode.hasDaughter(symbol)));
-    }
+	// specified in ArithCodeModel
+	public boolean escaped(int symbol) {
+		return (_contextNode != null
+				&& (symbol == ArithCodeModel.EOF
+				|| !_contextNode.hasDaughter(symbol)));
+	}
 
-    // specified in ArithCodeModel
-    public void exclude(int i) {
-	_excludedBytes.add(i);
-    }
+	// specified in ArithCodeModel
+	public void exclude(int i) {
+		_excludedBytes.add(i);
+	}
 
-    // specified in ArithCodeModel
-    public void interval(int symbol, int[] result) {
-	if (symbol == ArithCodeModel.EOF) _backoffModel.interval(EOF,result,_excludedBytes);
-	else if (symbol == ArithCodeModel.ESCAPE) intervalEscape(result);
-	else intervalByte(symbol,result);
-    }
+	// specified in ArithCodeModel
+	public void interval(int symbol, int[] result) {
+		if (symbol == ArithCodeModel.EOF) {
+			_backoffModel.interval(EOF,result,_excludedBytes);
+		}
+		else if (symbol == ArithCodeModel.ESCAPE) {
+			intervalEscape(result);
+		}
+		else {
+			intervalByte(symbol,result);
+		}
+	}
 
-    // specified in ArithCodeModel
-    public int pointToSymbol(int count) {
-	if (_contextNode != null) return _contextNode.pointToSymbol(count,_excludedBytes);
-	return _backoffModel.pointToSymbol(count,_excludedBytes);
-    }
+	// specified in ArithCodeModel
+	public int pointToSymbol(int count) {
+		if (_contextNode != null) return _contextNode.pointToSymbol(count,_excludedBytes);
+		return _backoffModel.pointToSymbol(count,_excludedBytes);
+	}
 
-    // specified in ArithCodeModel
-    public int totalCount() {
-	if (_contextNode == null) return _backoffModel.totalCount(_excludedBytes);
-	return _contextNode.totalCount(_excludedBytes);
-    }
+	// specified in ArithCodeModel
+	public int totalCount() {
+		if (_contextNode == null) return _backoffModel.totalCount(_excludedBytes);
+		return _contextNode.totalCount(_excludedBytes);
+	}
 
-    // specified in ArithCodeModel
-    public void increment(int i) {
-      /* @ron old code
+	// specified in ArithCodeModel
+	public void increment(int i) {
+		/* @ron old code
 	increment(Converter.integerToByte(i));*/
-      /*@ron*/
-        _buffer.buffer(i);
+		/*@ron*/
+		_buffer.buffer(i);
 
-        int firstByte = _buffer.bytes()[_buffer.offset()];
-        if (_contexts[/*Converter.byteToInteger(*/firstByte/*)*/] == null)
-            _contexts[/*Converter.byteToInteger(*/firstByte/*)*/] = new PPMNode(firstByte);
-        if (_buffer.length() > 1)
-            _contexts[/*Converter.byteToInteger(*/firstByte/*)*/].increment(_buffer.bytes(),
-                                                                    _buffer.offset()+1,
-                                                                    _buffer.length()-1);
-        // _backoffModel.increment(Converter.byteToInteger(i));  //  updates backoff model; best to exclude it by .1 i/B!
-        _contextLength = Math.min(_maxContextLength,_buffer.length());
-        getContextNodeBinarySearch();
-        _excludedBytes.clear();
+		int firstByte = _buffer.bytes()[_buffer.offset()];
+		if (_contexts[/*Converter.byteToInteger(*/firstByte/*)*/] == null)
+			_contexts[/*Converter.byteToInteger(*/firstByte/*)*/] = new PPMNode(firstByte);
+		if (_buffer.length() > 1)
+			_contexts[/*Converter.byteToInteger(*/firstByte/*)*/].increment(_buffer.bytes(),
+					_buffer.offset()+1,
+					_buffer.length()-1);
+		//_backoffModel.increment(i);  //  updates backoff model; best to exclude it by .1 i/B!
+		_contextLength = Math.min(_maxContextLength,_buffer.length());
+		getContextNodeBinarySearch();
+		_excludedBytes.clear();
 
-    }
+	}
 
-    /** Exclude all of the bytes in the specified byte set.
-     * @param bytesToExclude Set of bytes to exclude from outcome.
-     * @since 1.1
-     */
-    public void exclude(ByteSet bytesToExclude) {
-	_excludedBytes.add(bytesToExclude);
-    }
+	/** Exclude all of the bytes in the specified byte set.
+	 * @param bytesToExclude Set of bytes to exclude from outcome.
+	 * @since 1.1
+	 */
+	public void exclude(ByteSet bytesToExclude) {
+		_excludedBytes.add(bytesToExclude);
+	}
 
-    /** Count of bytes coded to use in pruning.
-     */
-    // private int _byteCount; // implied = 0; uncomment for pruning
+	/** Count of bytes coded to use in pruning.
+	 */
+	// private int _byteCount; // implied = 0; uncomment for pruning
 
-    /** Model to use for short contexts. */
-    protected final ExcludingAdaptiveUnigramModel _backoffModel; /*=@ron new ExcludingAdaptiveUnigramModel(abSize);*/
+	/** Model to use for short contexts. */
+	protected final ExcludingAdaptiveUnigramModel _backoffModel; /*=@ron new ExcludingAdaptiveUnigramModel(abSize);*/
 
-    /** Nodes at depth 1 in the model. All order 0 nodes are included in the unigram
-     */
-    protected final PPMNode[] _contexts;/*@ron = new PPMNode[abSize];*/
+	/** Nodes at depth 1 in the model. All order 0 nodes are included in the unigram
+	 */
+	protected final PPMNode[] _contexts;/*@ron = new PPMNode[abSize];*/
 
-    /** Maximum context length to search in trie.  Maximum count will
-     * be for maximum context length plus one.
-     */
-    protected final int _maxContextLength;
+	/** Maximum context length to search in trie.  Maximum count will
+	 * be for maximum context length plus one.
+	 */
+	protected final int _maxContextLength;
 
-    /** Root of the trie structure of counts.  Dummy byte as symbol.
-     */
-    private final PPMNode _rootNode = new PPMNode(-1);
+	/** Root of the trie structure of counts.  Dummy byte as symbol.
+	 */
+	private final PPMNode _rootNode = new PPMNode(-1);
 
-    /** Current context length.
-     */
-    protected int _contextLength; // implied = 0;
+	/** Current context length.
+	 */
+	protected int _contextLength; // implied = 0;
 
-    /** Current context node.
-     */
-    protected PPMNode _contextNode; // = null;
+	/** Current context node.
+	 */
+	public PPMNode _contextNode; // = null; // Omer: changed to public (for print2dot)
 
-    /** Bytes buffered for use as context.
-     */
-    protected ByteBuffer _buffer;
+	/** Bytes buffered for use as context.
+	 */
+	protected ByteBuffer _buffer;
 
-    /** Storage for the excluded bytes
-     */
-    protected final ByteSet _excludedBytes;/*@ron = new ByteSet(abSize);*/
+	/** Storage for the excluded bytes
+	 */
+	protected final ByteSet _excludedBytes;/*@ron = new ByteSet(abSize);*/
 
-    /** Returns interval for byte specified as an integer in 0 to 255 range.
-     * @param i Integer specification of byte in 0 to 255 range.
-     * @param result Array specifying cumulative probability for byte i.
-     */
-    private void intervalByte(int i, int[] result) {
-	if (_contextNode != null) _contextNode.interval(i,_excludedBytes,result);
-	else _backoffModel.interval(i,result,_excludedBytes);
-	increment(i);
-    }
+	/** Returns interval for byte specified as an integer in 0 to 255 range.
+	 * @param i Integer specification of byte in 0 to 255 range.
+	 * @param result Array specifying cumulative probability for byte i.
+	 */
+	private void intervalByte(int i, int[] result) {
+		if (_contextNode != null) {
+			_contextNode.interval(i,_excludedBytes,result);
+			_backoffModel.increment(i); // Omer: added
+		}
+		else {
+			_backoffModel.interval(i,result,_excludedBytes);
+		}
+		increment(i);
+	}
 
-    /** Returns interval for escape in current context.
-     * @param result Array for specifying cumulative probability for escape symbol in current context.
-     */
-    protected void intervalEscape(int[] result) {
-	_contextNode.intervalEscape(_excludedBytes,result);
-	if (_contextLength >= MIN_CONTEXT_LENGTH)
-	    for (PPMNode child = _contextNode._firstChild; child != null; child = child._nextSibling)
-		_excludedBytes.add(child._byte);
-	--_contextLength; // could decrement longer contexts more for a speedup in some cases
-	getContextNodeLongToShort();
-    }
+	/** Returns interval for escape in current context.
+	 * @param result Array for specifying cumulative probability for escape symbol in current context.
+	 */
+	protected void intervalEscape(int[] result) {
+		_contextNode.intervalEscape(_excludedBytes,result);
+		if (_contextLength >= MIN_CONTEXT_LENGTH)
+			for (PPMNode child = _contextNode._firstChild; child != null; child = child._nextSibling)
+				_excludedBytes.add(child._byte);
+		--_contextLength; // could decrement longer contexts more for a speedup in some cases
+		getContextNodeLongToShort();
+	}
 
-    // code used for pruning is edited out and marked as follows
-    //PRUNE private void prune() {
-    //PRUNE   for (int i = 0; i < 256; ++i) if (_contexts[i] != null) _contexts[i] = _contexts[i].prune();
-    //PRUNE }
+	// code used for pruning is edited out and marked as follows
+	//PRUNE private void prune() {
+	//PRUNE   for (int i = 0; i < 256; ++i) if (_contexts[i] != null) _contexts[i] = _contexts[i].prune();
+	//PRUNE }
 
-    /** Adds counts for given byte to model in current context and then updates the current context.
-     * Rescales counts if necessary.  Called by both encoding and deocding.
-     * @param b Byte to add to model.
-     *
+	/** Adds counts for given byte to model in current context and then updates the current context.
+	 * Rescales counts if necessary.  Called by both encoding and deocding.
+	 * @param b Byte to add to model.
+	 *
     private void increment(byte b) {
 
 	_buffer.buffer(b);
@@ -201,42 +212,51 @@ public class PPMModel implements ArithCodeModel {
 	//PRUNE if (++_byteCount == PRUNE_INTERVAL) { _byteCount = 0; prune(); } // pruning
     } @ron */
 
-    /** Use binary search to set the context node up to the currently
-     * specified context length.  May set it to <code>null</code> if
-     * not found.
-     */
-    protected void getContextNodeBinarySearch() {
-	int low = MIN_CONTEXT_LENGTH;
-	int high = _contextLength;
-	_contextLength = MIN_CONTEXT_LENGTH-1; // not sure we need this
-	_contextNode = null;
-	boolean isDeterministic = false;
-	while (high >= low) {
-	    int contextLength = (high + low)/2;
-	    PPMNode contextNode = lookupNode(contextLength);
-	    if (contextNode == null || contextNode.isChildless(_excludedBytes)) {
-		if (contextLength < high) high = contextLength;
-		else --high;
-	    } else if (contextNode.isDeterministic(_excludedBytes)) {
-		_contextLength = contextLength;
-		_contextNode = contextNode;
-		isDeterministic = true;
-		if (contextLength < high) high = contextLength;
-		else --high;
-	    } else if (!isDeterministic) {
-		_contextLength = contextLength;
-		_contextNode = contextNode;
-		if (contextLength > low) low = contextLength;
-		else ++low;
-	    }  else {
-		if (contextLength > low) low = contextLength;
-		else ++low;
-	    }
+	/** Use binary search to set the context node up to the currently
+	 * specified context length.  May set it to <code>null</code> if
+	 * not found.
+	 */
+	protected void getContextNodeBinarySearch() {
+		//if (_contextNode != null)
+		//System.out.println(_contextNode._byte);
+		//else System.out.println("null");
+		/*int low = MIN_CONTEXT_LENGTH;
+		int high = _contextLength;
+		_contextLength = MIN_CONTEXT_LENGTH-1; // not sure we need this
+		_contextNode = null;
+		boolean isDeterministic = false;
+		while (high >= low) {
+			int contextLength = (high + low)/2;
+			PPMNode contextNode = lookupNode(contextLength);
+			if (contextNode == null || contextNode.isChildless(_excludedBytes)) {
+				if (contextLength < high) high = contextLength;
+				else --high;
+				// Omer: added
+				//if (contextNode != null) {
+				//	_contextLength = contextLength;
+				//	_contextNode = contextNode;
+				//}
+			} else if (contextNode.isDeterministic(_excludedBytes)) {
+				_contextLength = contextLength;
+				_contextNode = contextNode;
+				isDeterministic = true;
+				if (contextLength < high) high = contextLength;
+				else --high;
+			} else if (!isDeterministic) {
+				_contextLength = contextLength;
+				_contextNode = contextNode;
+				if (contextLength > low) low = contextLength;
+				else ++low;
+			}  else {
+				if (contextLength > low) low = contextLength;
+				else ++low;
+			}
+		}*/
+		this.getContextNodeLongToShort(); //Omer: added (replaced entire function with alternative function)
 	}
-    }
 
-    /* un-used variant lookung up context lengths by starting with shortest and
-     * continuing to increase until found.
+	/* un-used variant lookung up context lengths by starting with shortest and
+	 * continuing to increase until found.
     private void getContextNodeShortToLong() {
 	int maxContextLength = _contextLength;
 	_contextNode = null;
@@ -251,75 +271,76 @@ public class PPMModel implements ArithCodeModel {
 	    if (node.isDeterministic(_excludedBytes)) return;
 	}
     }
-    */
+	 */
 
-    /** Starting at the longest context, count down in length to set
-     * a valid context or give up.  This version finds the shortest deterministic
-     * context <= in length to the current context length, but if there is
-     * no deterministic context, returns longest context length that exists
-     * that is <= in length to the current context.
-     * Could also implement this in short to long order
-     */
-    protected void getContextNodeLongToShort() {
-	while (_contextLength >= MIN_CONTEXT_LENGTH) {
-	    _contextNode = lookupNode(_contextLength);
-	    if (_contextNode == null || _contextNode.isChildless(_excludedBytes)) { --_contextLength; continue; }
-	    while (_contextLength > MIN_CONTEXT_LENGTH && _contextNode.isDeterministic(_excludedBytes)) {
-		// backoff to shortest deterministic node if context node is deterministic
-		PPMNode backoffNode = lookupNode(_contextLength-1);
-		if (backoffNode == null || !backoffNode.isDeterministic(_excludedBytes)) return;
-		_contextNode = backoffNode;
-		--_contextLength;
-	    }
-	    return;
+	/** Starting at the longest context, count down in length to set
+	 * a valid context or give up.  This version finds the shortest deterministic
+	 * context <= in length to the current context length, but if there is
+	 * no deterministic context, returns longest context length that exists
+	 * that is <= in length to the current context.
+	 * Could also implement this in short to long order
+	 */
+	protected void getContextNodeLongToShort() {
+		while (_contextLength >= MIN_CONTEXT_LENGTH) {
+			_contextNode = lookupNode(_contextLength);
+			if (_contextNode != null) return; // Omer: added
+			if (_contextNode == null || _contextNode.isChildless(_excludedBytes)) { --_contextLength; continue; }
+			while (_contextLength > MIN_CONTEXT_LENGTH && _contextNode.isDeterministic(_excludedBytes)) {
+				// backoff to shortest deterministic node if context node is deterministic
+				PPMNode backoffNode = lookupNode(_contextLength-1);
+				if (backoffNode == null || !backoffNode.isDeterministic(_excludedBytes)) return;
+				_contextNode = backoffNode;
+				--_contextLength;
+			}
+			return;
+		}
+		_contextNode = null;
 	}
-	_contextNode = null;
-    }
 
-    /** Returns node from the current byte buffer of
-     * the specified context length, or null if there isn't one.
-     * @param contextLength Number of bytes of context used.
-     * @return Node found at that context.
-     */
-    private PPMNode lookupNode(int contextLength) {
-	PPMNode node = _contexts[/*Converter.byteToInteger(*/_buffer.bytes()[_buffer.offset()+_buffer.length()-contextLength]/*)*/];
-	if (node == null) return (PPMNode) null;
-	return lookup(node,_buffer.bytes(),_buffer.offset()+_buffer.length()-contextLength+1,contextLength-1);
-    }
-
-    /** Looks up a node from the given bytes, offset and length starting
-     * from the specified node.
-     * @param node Node from which to search.
-     * @param bytes Sequence of bytes to search.
-     * @param offset Offset into sequence of bytes of the first byte.
-     * @param length Number of bytes to look up.
-     * @return Node found for the given bytes.
-     */
-    /*@ron */
-    private static PPMNode lookup(PPMNode node, /*byte*/int[] bytes, int offset, int length) {
-	if (length == 0) return node;
-	for (PPMNode child = node._firstChild; length > 0 && child != null; ) {
-	    if (bytes[offset]==child._byte) {
-		if (length == 1) return child;
-		node = child;
-		child = child._firstChild;
-		++offset;
-		--length;
-	    } else {
-		child = child._nextSibling;
-	    }
+	/** Returns node from the current byte buffer of
+	 * the specified context length, or null if there isn't one.
+	 * @param contextLength Number of bytes of context used.
+	 * @return Node found at that context.
+	 */
+	private PPMNode lookupNode(int contextLength) {
+		PPMNode node = _contexts[/*Converter.byteToInteger(*/_buffer.bytes()[_buffer.offset()+_buffer.length()-contextLength]/*)*/];
+		if (node == null) return (PPMNode) null;
+		return lookup(node,_buffer.bytes(),_buffer.offset()+_buffer.length()-contextLength+1,contextLength-1);
 	}
-	return (PPMNode) null;
-    }
 
-    /** Minimum context length to look down sequence of nodes.
-     * Shorter contexts use backoff model.
-     */
-    private static final int MIN_CONTEXT_LENGTH = 1;
+	/** Looks up a node from the given bytes, offset and length starting
+	 * from the specified node.
+	 * @param node Node from which to search.
+	 * @param bytes Sequence of bytes to search.
+	 * @param offset Offset into sequence of bytes of the first byte.
+	 * @param length Number of bytes to look up.
+	 * @return Node found for the given bytes.
+	 */
+	/*@ron */
+	private static PPMNode lookup(PPMNode node, /*byte*/int[] bytes, int offset, int length) {
+		if (length == 0) return node;
+		for (PPMNode child = node._firstChild; length > 0 && child != null; ) {
+			if (bytes[offset]==child._byte) {
+				if (length == 1) return child;
+				node = child;
+				child = child._firstChild;
+				++offset;
+				--length;
+			} else {
+				child = child._nextSibling;
+			}
+		}
+		return (PPMNode) null;
+	}
 
-    /** Period between prunings in number of bytes.
-     */
-    //PRUNE private static final int PRUNE_INTERVAL = 250000; // loses about 10% compression rate, saves lots of space
+	/** Minimum context length to look down sequence of nodes.
+	 * Shorter contexts use backoff model.
+	 */
+	private static final int MIN_CONTEXT_LENGTH = 1;
+
+	/** Period between prunings in number of bytes.
+	 */
+	//PRUNE private static final int PRUNE_INTERVAL = 250000; // loses about 10% compression rate, saves lots of space
 
 
 }

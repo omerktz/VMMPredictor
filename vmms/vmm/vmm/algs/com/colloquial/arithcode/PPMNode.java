@@ -145,6 +145,12 @@ public final class PPMNode {
      * @param result Array into which to write the range for the specified bytes.
      */
     void intervalEscape(ByteSet excludedBytes, int[] result) {
+    	if (_numberOfOutcomes == 0) { // Omer: added
+    		// handles case of no observed letters after current context // Omer: added
+    		result[2] = (result[1] = 1); // Omer: added
+    		result[0] = 0; // Omer: added
+    		return; // Omer: added
+    	} // Omer: added
 	result[2] = (result[1] = totalCount(excludedBytes));
 	result[0] = result[1]-_numberOfOutcomes;
     }
@@ -251,23 +257,23 @@ public final class PPMNode {
 
     /** The byte for this node.
      */
-    final /*byte*/int _byte;
+    final public /*byte*/int _byte; // Omer: changed to public (for print2dot)
 
     /** The scaled count for this node.
      */
-    private short _count = 1;
+    public short _count = 1; // Omer: changed to public (for print2dot)
 
     /** The scaled number of outcomes used to calculate escape likelihoods.
      */
-    private short _numberOfOutcomes; // implied = 0;
+    public short _numberOfOutcomes; // implied = 0; // Omer: changed to public (for print2dot)
 
     /** The first child of this node.
      */
-    PPMNode _firstChild; // implied = null;
+    public PPMNode _firstChild; // implied = null;
 
     /** The next sibling of this node.
      */
-    PPMNode _nextSibling; // implied = null;
+    public PPMNode _nextSibling; // implied = null;
 
     /** Prunes this node and its children, returning <code>null</code> if
      * the node's count is too low and pruning all children with counts
