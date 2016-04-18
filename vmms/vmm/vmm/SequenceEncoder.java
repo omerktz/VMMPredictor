@@ -45,7 +45,7 @@ public class SequenceEncoder {
 	public Object[] decode(IntSequence iseq) {
 		Object[] res = new String[iseq.length()-1];
 		for (int i = 1; i < iseq.length(); i++) {
-			res[i] = getDecodedSymbol(iseq.intAt(i));
+			res[i-1] = getDecodedSymbol(iseq.intAt(i));
 		}
 		return res;
 	}
