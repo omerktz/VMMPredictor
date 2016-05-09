@@ -36,7 +36,7 @@ import vmm.algs.com.colloquial.arithcode.*;
 public class OfflinePPMModel
 extends PPMModel {
 
-	private static int[] allRes = new int[3];
+	private int[] allRes = new int[3];
 	private boolean isFirstPrediction;
 
 	public OfflinePPMModel(int maxCodeLength, int absize) {
